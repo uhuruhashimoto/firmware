@@ -25,7 +25,10 @@ bool handleReceivedProtobuf(const meshtastic_MeshPacket &mp, meshtastic_Neighbor
 }
 
 /* Collect neighbor info from the nodeDB's history, capping at a maximum number of entries and max time */
-uint32_t NeighborInfoModule::collectNeighborInfo(meshtastic_NeighborInfo *neighborInfo) {}
+uint32_t NeighborInfoModule::collectNeighborInfo(meshtastic_NeighborInfo *neighborInfo)
+{
+    // TODO: star graph; mask for real neighbors in the nodeDB
+}
 
 /* Send neighbor info to the mesh */
 void NeighborInfoModule::sendNeighborInfo(NodeNum dest, bool wantReplies) {}
@@ -37,6 +40,15 @@ Will be used for broadcast.
 int32_t NeighborInfoModule::runOnce() {}
 
 /*
+Allocate a zeroed neighbor info packet
+*/
+meshtastic_NeighborInfo *NeighborInfoModule::allocateNeighborInfoPacket()
+{
+    meshtastic_NeighborInfo *neighborInfo = (meshtastic_NeighborInfo *)malloc(sizeof(meshtastic_NeighborInfo));
+    return neighborInfo;
+}
+
+/*
 Prints a single neighbor info packet and associated neighbors
 NOTE: For debugging only
 */
@@ -46,4 +58,4 @@ void printNeighborInfo(const char *header, const meshtastic_NeighborInfo *np);
 Prints the nodeDB with selectors for the neighbors we've chosed
 NOTE: For debugging only
 */
-void printNodeDBSelection(const char *header, const int level);
+void printNodeDBSelection(const char *header, const meshtastic_NeighborInfo *np);
