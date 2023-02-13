@@ -1,4 +1,5 @@
 #include "NeighborInfoModule.h"
+#include "MeshService.h"
 #include "NodeDB.h"
 #include "RTC.h"
 
@@ -53,13 +54,22 @@ void NeighborInfoModule::sendNeighborInfo(NodeNum dest, bool wantReplies)
 {
     meshtastic_NeighborInfo *neighborInfo = allocateNeighborInfoPacket();
     collectNeighborInfo(neighborInfo);
+    meshtastic_MeshPacket *p = allocDataProtobuf(*neighborInfo);
+    p->to = dest;
+    p->decoded.want_response = wantReplies;
+    service.sendToMesh(p);
 }
 
 /*
 Encompasses the full construction and sending packet to mesh
 Will be used for broadcast.
 */
-int32_t NeighborInfoModule::runOnce() {}
+int32_t NeighborInfoModule::runOnce()
+{
+    bool requestReplies = false;
+    sendNeighborInfo(NODENUM_BROADCAST, requestReplies);
+    return default_broadcast_interval_secs * 1000;
+}
 
 /*
 Collect a recieved neighbor info packet from another node
