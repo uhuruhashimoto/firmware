@@ -83,12 +83,43 @@ bool handleReceivedProtobuf(const meshtastic_MeshPacket &mp, meshtastic_Neighbor
 
 /*
 Prints a single neighbor info packet and associated neighbors
+Uses LOG_DEBUG, which equates to Console.log
 NOTE: For debugging only
 */
-void printNeighborInfo(const char *header, const meshtastic_NeighborInfo *np) {}
+void printNeighborInfo(const char *header, const meshtastic_NeighborInfo *np)
+{
+    LOG_DEBUG("%s NEIGHBORINFO PACKET\n----------------\n", header);
+    LOG_DEBUG("Packet contains %d neighbors\n", np->neighbors_count);
+    for (int i = 0; i < np->neighbors_count; i++) {
+        LOG_DEBUG("Neighbor %d: node_id=%d, rx_time=%d, snr=%d\n", i, np->neighbors[i].node_id, np->neighbors[i].rx_time,
+                  np->neighbors[i].snr);
+    }
+    LOG_DEBUG("----------------\n");
+}
 
 /*
-Prints the nodeDB with selectors for the neighbors we've chosed
+Prints the nodeDB with selectors for the neighbors we've chosen to send (inefficiently)
+Uses LOG_DEBUG, which equates to Console.log
 NOTE: For debugging only
 */
-void printNodeDBSelection(const char *header, const meshtastic_NeighborInfo *np) {}
+void printNodeDBSelection(const char *header, const meshtastic_NeighborInfo *np)
+{
+    int num_nodes = nodeDB.getNumNodes();
+    LOG_DEBUG("%s NODEDB SELECTION:\n----------------\n", header);
+    LOG_DEBUG("Selected %d neighbors of %d DB nodes\n", np->neighbors_count, num_nodes);
+    for (int i = 0; i < num_nodes; i++) {
+        meshtastic_NodeInfo *dbEntry = nodeDB.getNodeByIndex(i);
+        bool chosen = false;
+        for (int j = 0; j < np->neighbors_count; j++) {
+            if (np->neighbors[j].node_id == dbEntry->num) {
+                chosen = true;
+            }
+        }
+        if (!chosen) {
+            LOG_DEBUG("     Node %d: node_id=%d, rx_time=%d, snr=%d\n", i, dbEntry->num, dbEntry->last_heard, dbEntry->snr);
+        } else {
+            LOG_DEBUG("---> Node %d: node_id=%d, rx_time=%d, snr=%d\n", i, dbEntry->num, dbEntry->last_heard, dbEntry->snr);
+        }
+    }
+    LOG_DEBUG("----------------\n");
+}
