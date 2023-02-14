@@ -46,6 +46,7 @@ uint32_t NeighborInfoModule::collectNeighborInfo(meshtastic_NeighborInfo *neighb
             neighborInfo->neighbors_count++;
         }
     }
+    printNodeDBSelection("COLLECTED", neighborInfo);
     return neighborInfo->neighbors_count;
 }
 
@@ -57,6 +58,7 @@ void NeighborInfoModule::sendNeighborInfo(NodeNum dest, bool wantReplies)
     meshtastic_MeshPacket *p = allocDataProtobuf(*neighborInfo);
     p->to = dest;
     p->decoded.want_response = wantReplies;
+    printNeighborInfo("SENDING", neighborInfo);
     service.sendToMesh(p);
 }
 
