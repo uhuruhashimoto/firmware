@@ -7,6 +7,9 @@
 #define MAX_NUM_NEIGHBORS 10            // also defined in NeighborInfo protobuf options
 NeighborInfoModule *neighborInfoModule;
 
+void printNeighborInfo(const char *header, const meshtastic_NeighborInfo *np);
+void printNodeDBSelection(const char *header, const meshtastic_NeighborInfo *np);
+
 /* Send our initial owner announcement 30 seconds after we start (to give network time to setup) */
 NeighborInfoModule::NeighborInfoModule()
     : ProtobufModule("neighborinfo", meshtastic_PortNum_PRIVATE_APP, &meshtastic_NeighborInfo_msg), concurrency::OSThread(
@@ -81,6 +84,8 @@ bool handleReceivedProtobuf(const meshtastic_MeshPacket &mp, meshtastic_Neighbor
 {
     // TODO: check if we want to handle this packet
     printNeighborInfo("RECIEVED", np);
+    // No need for others to handle this packet
+    return true;
 }
 
 /*

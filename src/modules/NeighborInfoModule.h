@@ -33,7 +33,7 @@ class NeighborInfoModule : public ProtobufModule<meshtastic_NeighborInfo>, priva
     uint32_t collectNeighborInfo(meshtastic_NeighborInfo *neighborInfo);
 
     /* Allocate a new NeighborInfo packet */
-    meshtastic_NeighborInfo *NeighborInfoModule::allocateNeighborInfoPacket();
+    meshtastic_NeighborInfo *allocateNeighborInfoPacket();
 
     /* Does our periodic broadcast */
     virtual int32_t runOnce() override;
