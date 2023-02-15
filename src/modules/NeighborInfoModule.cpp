@@ -14,7 +14,8 @@ NOTE: For debugging only
 */
 void printNeighborInfo(const char *header, const meshtastic_NeighborInfo *np)
 {
-    LOG_DEBUG("%s NEIGHBORINFO PACKET\n----------------\n", header);
+    LOG_DEBUG("%s NEIGHBORINFO PACKET from Node %d (recieved by %d)\n", header, np->node_id, nodeDB.getNodeNum());
+    LOG_DEBUG("----------------\n");
     LOG_DEBUG("Packet contains %d neighbors\n", np->neighbors_count);
     for (int i = 0; i < np->neighbors_count; i++) {
         LOG_DEBUG("Neighbor %d: node_id=%d, rx_time=%d, snr=%d\n", i, np->neighbors[i].node_id, np->neighbors[i].rx_time,
@@ -31,7 +32,8 @@ NOTE: For debugging only
 void printNodeDBSelection(const char *header, const meshtastic_NeighborInfo *np)
 {
     int num_nodes = nodeDB.getNumNodes();
-    LOG_DEBUG("%s NODEDB SELECTION:\n----------------\n", header);
+    LOG_DEBUG("%s NODEDB SELECTION from Node %d:\n", header, nodeDB.getNodeNum());
+    LOG_DEBUG("----------------\n");
     LOG_DEBUG("Selected %d neighbors of %d DB nodes\n", np->neighbors_count, num_nodes);
     for (int i = 0; i < num_nodes; i++) {
         meshtastic_NodeInfo *dbEntry = nodeDB.getNodeByIndex(i);
@@ -79,10 +81,14 @@ uint32_t NeighborInfoModule::collectNeighborInfo(meshtastic_NeighborInfo *neighb
     // TODO: star graph; mask for real neighbors in the nodeDB
     int num_nodes = nodeDB.getNumNodes();
     int current_time = getTime();
+    int my_node_id = nodeDB.getNodeNum();
+    neighborInfo->node_id = my_node_id;
+    neighborInfo->tx_time = current_time;
 
     for (int i = 0; i < num_nodes; i++) {
         meshtastic_NodeInfo *dbEntry = nodeDB.getNodeByIndex(i);
-        if ((current_time - dbEntry->last_heard) < MAX_NEIGHBOR_AGE && neighborInfo->neighbors_count < MAX_NUM_NEIGHBORS) {
+        if (((current_time - dbEntry->last_heard < MAX_NEIGHBOR_AGE) || (dbEntry->last_heard == 0)) &&
+            (neighborInfo->neighbors_count < MAX_NUM_NEIGHBORS) && (dbEntry->num != my_node_id)) {
             neighborInfo->neighbors[neighborInfo->neighbors_count].node_id = dbEntry->num;
             neighborInfo->neighbors[neighborInfo->neighbors_count].rx_time = dbEntry->last_heard;
             neighborInfo->neighbors[neighborInfo->neighbors_count].snr = dbEntry->snr;
@@ -113,7 +119,8 @@ int32_t NeighborInfoModule::runOnce()
 {
     bool requestReplies = false;
     sendNeighborInfo(NODENUM_BROADCAST, requestReplies);
-    return default_broadcast_interval_secs * 1000;
+    return 30 * 1000; // 30 seconds for testing
+    // return default_broadcast_interval_secs * 1000;
 }
 
 /*
