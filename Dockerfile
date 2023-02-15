@@ -21,7 +21,7 @@ USER mesh
 RUN wget https://raw.githubusercontent.com/platformio/platformio-core-installer/master/get-platformio.py -qO /tmp/get-platformio.py && \
 	chmod +x /tmp/get-platformio.py && \
 	python3 /tmp/get-platformio.py && \
-	git clone https://github.com/meshtastic/firmware --recurse-submodules /tmp/firmware && \
+	git clone https://github.com/uhuruhashimoto/firmware.git --recurse-submodules /tmp/firmware && \
 	cd /tmp/firmware && \
 	chmod +x /tmp/firmware/bin/build-native.sh && \
 	source ~/.platformio/penv/bin/activate && \
