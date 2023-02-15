@@ -51,10 +51,9 @@ void printNodeDBSelection(const char *header, const meshtastic_NeighborInfo *np)
 }
 
 /* Send our initial owner announcement 30 seconds after we start (to give network time to setup) */
-// TODO: meshtastic_PortNum_NEIGHBORINFO_APP
 NeighborInfoModule::NeighborInfoModule()
-    : ProtobufModule("neighborinfo", meshtastic_PortNum_PRIVATE_APP, &meshtastic_NeighborInfo_msg), concurrency::OSThread(
-                                                                                                        "NeighborInfoModule")
+    : ProtobufModule("neighborinfo", meshtastic_PortNum_NEIGHBORINFO_APP, &meshtastic_NeighborInfo_msg), concurrency::OSThread(
+                                                                                                             "NeighborInfoModule")
 {
     ourPortNum = meshtastic_PortNum_PRIVATE_APP;
     setIntervalFromNow(30 * 1000);
