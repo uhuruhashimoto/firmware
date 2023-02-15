@@ -6,6 +6,7 @@
 #include "mesh/Channels.h"
 #include "mesh/Router.h"
 #include "mesh/generated/meshtastic/mqtt.pb.h"
+#include "mesh/generated/meshtastic/neighborinfo.pb.h"
 #include "mesh/generated/meshtastic/telemetry.pb.h"
 #include "mesh/http/WiFiAPClient.h"
 #include "sleep.h"
@@ -503,6 +504,24 @@ std::string MQTT::downstreamPacketToJson(meshtastic_MeshPacket *mp)
                 jsonObj["payload"] = new JSONValue(msgPayload);
             } else {
                 LOG_ERROR("Error decoding protobuf for position message!\n");
+            }
+        };
+        break;
+    }
+    case meshtastic_PortNum_NEIGHBORINFO_APP: {
+        msgType = "neighborinfo";
+        meshtastic_NeighborInfo scratch;
+        meshtastic_NeighborInfo *decoded = NULL;
+        if (mp->which_payload_variant == meshtastic_MeshPacket_decoded_tag) {
+            memset(&scratch, 0, sizeof(scratch));
+            if (pb_decode_from_bytes(mp->decoded.payload.bytes, mp->decoded.payload.size, &meshtastic_Waypoint_msg, &scratch)) {
+                decoded = &scratch;
+                msgPayload["node_id"] = new JSONValue((int)decoded->node_id);
+                msgPayload["tx_time"] = new JSONValue((int)decoded->tx_time);
+                msgPayload["neighbors_count"] = new JSONValue((int)decoded->neighbors_count);
+                msgPayload["neighbors"] = new JSONValue(decoded->neighbors);
+            } else {
+                LOG_ERROR("Error decoding protobuf for neighborinfo message!\n");
             }
         };
         break;
