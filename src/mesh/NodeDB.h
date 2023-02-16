@@ -45,6 +45,7 @@ class NodeDB
     // Note: these two references just point into our static array we serialize to/from disk
     meshtastic_NodeInfo *nodes;
     pb_size_t *numNodes;
+    uint32_t *lastSentByIDs;
 
     uint32_t readPointer = 0;
 

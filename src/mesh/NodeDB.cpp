@@ -63,7 +63,9 @@ static uint8_t ourMacAddr[6];
  */
 NodeNum displayedNodeNum;
 
-NodeDB::NodeDB() : nodes(devicestate.node_db), numNodes(&devicestate.node_db_count) {}
+NodeDB::NodeDB() : nodes(devicestate.node_db), numNodes(&devicestate.node_db_count), lastSentByIDs(devicestate.last_sent_by_IDs)
+{
+}
 
 /**
  * Most (but not always) of the time we want to treat packets 'from' the local phone (where from == 0), as if they originated on
