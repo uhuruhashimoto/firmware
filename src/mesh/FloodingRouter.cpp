@@ -41,8 +41,12 @@ void FloodingRouter::sniffReceived(const meshtastic_MeshPacket *p, const meshtas
             if (config.device.role != meshtastic_Config_DeviceConfig_Role_CLIENT_MUTE) {
                 meshtastic_MeshPacket *tosend = packetPool.allocCopy(*p); // keep a copy because we will be sending it
 
-                tosend->hop_limit--;                    // bump down the hop count
-                tosend->last_sent_by_ID = getNodeNum(); // update the lastSentBy to our ID
+                tosend->hop_limit--; // bump down the hop count
+                // if it's not going from our node to the client, update the lastSentBy to our ID
+                int my_node_num = getNodeNum();
+                if (tosend->to != my_node_num && tosend->to != 0) {
+                    tosend->last_sent_by_ID = my_node_num; // update the lastSentBy to our ID
+                }
 
                 // If it is a traceRoute request, update the route that it went via me
                 if (p->which_payload_variant == meshtastic_MeshPacket_decoded_tag && traceRouteModule->wantPacket(p)) {
