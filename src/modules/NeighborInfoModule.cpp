@@ -23,6 +23,23 @@ void printNeighborInfo(const char *header, const meshtastic_NeighborInfo *np)
     }
     LOG_DEBUG("----------------\n");
 }
+/*
+Prints the nodeDB nodes so we can see whose nodeInfo we have
+NOTE: for debugging only
+*/
+void printNodeDBNodes(const char *header)
+{
+    int num_nodes = nodeDB.getNumNodes();
+    LOG_DEBUG("%s NODEDB SELECTION from Node %d:\n", header, nodeDB.getNodeNum());
+    LOG_DEBUG("----------------\n");
+    LOG_DEBUG("DB contains %d nodes\n", num_nodes);
+    for (int i = 0; i < num_nodes; i++) {
+        meshtastic_NodeInfo *dbEntry = nodeDB.getNodeByIndex(i);
+        LOG_DEBUG("     Node %d: node_id=%d, orig sender = %d, rx_time=%d, snr=%d\n", i, dbEntry->last_sent_by_ID, dbEntry->num,
+                  dbEntry->last_heard, dbEntry->snr);
+    }
+    LOG_DEBUG("----------------\n");
+}
 
 /*
 Prints the nodeDB with selectors for the neighbors we've chosen to send (inefficiently)
@@ -31,24 +48,22 @@ NOTE: For debugging only
 */
 void printNodeDBSelection(const char *header, const meshtastic_NeighborInfo *np)
 {
-    int num_nodes = nodeDB.getNumNodes();
+    int num_neighbors = nodeDB.getNumNeighbors();
     LOG_DEBUG("%s NODEDB SELECTION from Node %d:\n", header, nodeDB.getNodeNum());
     LOG_DEBUG("----------------\n");
-    LOG_DEBUG("Selected %d neighbors of %d DB nodes\n", np->neighbors_count, num_nodes);
-    for (int i = 0; i < num_nodes; i++) {
-        meshtastic_NodeInfo *dbEntry = nodeDB.getNodeByIndex(i);
+    LOG_DEBUG("Selected %d neighbors of %d DB neighbors\n", np->neighbors_count, num_neighbors);
+    for (int i = 0; i < num_neighbors; i++) {
+        meshtastic_Neighbor *dbEntry = nodeDB.getNeighborByIndex(i);
         bool chosen = false;
         for (int j = 0; j < np->neighbors_count; j++) {
-            if (np->neighbors[j].node_id == dbEntry->last_sent_by_ID) {
+            if (np->neighbors[j].node_id == dbEntry->node_id) {
                 chosen = true;
             }
         }
         if (!chosen) {
-            LOG_DEBUG("     Node %d: node_id=%d, orig sender = %d, rx_time=%d, snr=%d\n", i, dbEntry->last_sent_by_ID,
-                      dbEntry->num, dbEntry->last_heard, dbEntry->snr);
+            LOG_DEBUG("     Node %d: neighbor=%d, rx_time=%d, snr=%d\n", i, dbEntry->node_id, dbEntry->rx_time, dbEntry->snr);
         } else {
-            LOG_DEBUG("---> Node %d: node_id=%d, orig sender = %d, rx_time=%d, snr=%d\n", i, dbEntry->last_sent_by_ID,
-                      dbEntry->num, dbEntry->last_heard, dbEntry->snr);
+            LOG_DEBUG("---> Node %d: neighbor=%d, rx_time=%d, snr=%d\n", i, dbEntry->node_id, dbEntry->rx_time, dbEntry->snr);
         }
     }
     LOG_DEBUG("----------------\n");
@@ -81,22 +96,23 @@ Assumes that the neighborInfo packet has been allocated
 uint32_t NeighborInfoModule::collectNeighborInfo(meshtastic_NeighborInfo *neighborInfo)
 {
     // TODO: star graph; mask for real neighbors in the nodeDB
-    int num_nodes = nodeDB.getNumNodes();
+    int num_neighbors = nodeDB.getNumNeighbors();
     int current_time = getTime();
     int my_node_id = nodeDB.getNodeNum();
     neighborInfo->node_id = my_node_id;
     neighborInfo->tx_time = current_time;
 
-    for (int i = 0; i < num_nodes; i++) {
-        meshtastic_NodeInfo *dbEntry = nodeDB.getNodeByIndex(i);
-        if (((current_time - dbEntry->last_heard < MAX_NEIGHBOR_AGE) || (dbEntry->last_heard == 0)) &&
-            (neighborInfo->neighbors_count < MAX_NUM_NEIGHBORS) && (dbEntry->last_sent_by_ID != my_node_id)) {
-            neighborInfo->neighbors[neighborInfo->neighbors_count].node_id = dbEntry->last_sent_by_ID;
-            neighborInfo->neighbors[neighborInfo->neighbors_count].rx_time = dbEntry->last_heard;
+    for (int i = 0; i < num_neighbors; i++) {
+        meshtastic_Neighbor *dbEntry = nodeDB.getNeighborByIndex(i);
+        if (((current_time - dbEntry->rx_time < MAX_NEIGHBOR_AGE) || (dbEntry->rx_time == 0)) &&
+            (neighborInfo->neighbors_count < MAX_NUM_NEIGHBORS) && (dbEntry->node_id != my_node_id)) {
+            neighborInfo->neighbors[neighborInfo->neighbors_count].node_id = dbEntry->node_id;
+            neighborInfo->neighbors[neighborInfo->neighbors_count].rx_time = dbEntry->rx_time;
             neighborInfo->neighbors[neighborInfo->neighbors_count].snr = dbEntry->snr;
             neighborInfo->neighbors_count++;
         }
     }
+    printNodeDBNodes("DBSTATE");
     printNodeDBSelection("COLLECTED", neighborInfo);
     return neighborInfo->neighbors_count;
 }

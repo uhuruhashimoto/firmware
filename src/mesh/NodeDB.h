@@ -95,6 +95,8 @@ class NodeDB
 
     size_t getNumNodes() { return *numNodes; }
 
+    size_t getNumNeighbors() { return *numNeighbors; }
+
     /// if returns false, that means our node should send a DenyNodeNum response.  If true, we think the number is okay for use
     // bool handleWantNodeNum(NodeNum n);
 
@@ -124,6 +126,11 @@ class NodeDB
         return &nodes[x];
     }
 
+    meshtastic_Neighbor *getNeighborByIndex(size_t x)
+    {
+        assert(x < *numNeighbors);
+        return &neighbors[x];
+    }
     /// Return the number of nodes we've heard from recently (within the last 2 hrs?)
     size_t getNumOnlineNodes();
 
