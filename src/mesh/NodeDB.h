@@ -45,6 +45,8 @@ class NodeDB
     // Note: these two references just point into our static array we serialize to/from disk
     meshtastic_NodeInfo *nodes;
     pb_size_t *numNodes;
+    meshtastic_Neighbor *neighbors;
+    pb_size_t *numNeighbors;
 
     uint32_t readPointer = 0;
 
@@ -137,6 +139,9 @@ class NodeDB
   private:
     /// Find a node in our DB, create an empty NodeInfo if missing
     meshtastic_NodeInfo *getOrCreateNode(NodeNum n);
+
+    /// Ditto with a neighbor
+    meshtastic_Neighbor *NodeDB::getOrCreateNeighbor(NodeNum n, int timestamp, int snr);
 
     /// Notify observers of changes to the DB
     void notifyObservers(bool forceUpdate = false)
