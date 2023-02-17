@@ -120,6 +120,7 @@ meshtastic_MeshPacket *Router::allocForSending()
     p->from = nodeDB.getNodeNum();
     p->to = NODENUM_BROADCAST;
     p->hop_limit = (config.lora.hop_limit >= HOP_MAX) ? HOP_MAX : config.lora.hop_limit;
+    p->last_sent_by_ID = p->from;
     p->id = generatePacketId();
     p->rx_time =
         getValidTime(RTCQualityFromNet); // Just in case we process the packet locally - make sure it has a valid timestamp
@@ -225,6 +226,7 @@ ErrorCode Router::send(meshtastic_MeshPacket *p)
     // Up until this point we might have been using 0 for the from address (if it started with the phone), but when we send over
     // the lora we need to make sure we have replaced it with our local address
     p->from = getFrom(p);
+    p->last_sent_by_ID = p->from;
 
     // If the packet hasn't yet been encrypted, do so now (it might already be encrypted if we are just forwarding it)
 

@@ -39,14 +39,16 @@ void printNodeDBSelection(const char *header, const meshtastic_NeighborInfo *np)
         meshtastic_NodeInfo *dbEntry = nodeDB.getNodeByIndex(i);
         bool chosen = false;
         for (int j = 0; j < np->neighbors_count; j++) {
-            if (np->neighbors[j].node_id == dbEntry->num) {
+            if (np->neighbors[j].node_id == dbEntry->last_sent_by_ID) {
                 chosen = true;
             }
         }
         if (!chosen) {
-            LOG_DEBUG("     Node %d: node_id=%d, rx_time=%d, snr=%d\n", i, dbEntry->num, dbEntry->last_heard, dbEntry->snr);
+            LOG_DEBUG("     Node %d: node_id=%d, orig sender = %d, rx_time=%d, snr=%d\n", i, dbEntry->last_sent_by_ID,
+                      dbEntry->num, dbEntry->last_heard, dbEntry->snr);
         } else {
-            LOG_DEBUG("---> Node %d: node_id=%d, rx_time=%d, snr=%d\n", i, dbEntry->num, dbEntry->last_heard, dbEntry->snr);
+            LOG_DEBUG("---> Node %d: node_id=%d, orig sender = %d, rx_time=%d, snr=%d\n", i, dbEntry->last_sent_by_ID,
+                      dbEntry->num, dbEntry->last_heard, dbEntry->snr);
         }
     }
     LOG_DEBUG("----------------\n");
@@ -88,8 +90,8 @@ uint32_t NeighborInfoModule::collectNeighborInfo(meshtastic_NeighborInfo *neighb
     for (int i = 0; i < num_nodes; i++) {
         meshtastic_NodeInfo *dbEntry = nodeDB.getNodeByIndex(i);
         if (((current_time - dbEntry->last_heard < MAX_NEIGHBOR_AGE) || (dbEntry->last_heard == 0)) &&
-            (neighborInfo->neighbors_count < MAX_NUM_NEIGHBORS) && (dbEntry->num != my_node_id)) {
-            neighborInfo->neighbors[neighborInfo->neighbors_count].node_id = dbEntry->num;
+            (neighborInfo->neighbors_count < MAX_NUM_NEIGHBORS) && (dbEntry->last_sent_by_ID != my_node_id)) {
+            neighborInfo->neighbors[neighborInfo->neighbors_count].node_id = dbEntry->last_sent_by_ID;
             neighborInfo->neighbors[neighborInfo->neighbors_count].rx_time = dbEntry->last_heard;
             neighborInfo->neighbors[neighborInfo->neighbors_count].snr = dbEntry->snr;
             neighborInfo->neighbors_count++;
@@ -127,7 +129,7 @@ int32_t NeighborInfoModule::runOnce()
 {
     bool requestReplies = false;
     sendNeighborInfo(NODENUM_BROADCAST, requestReplies);
-    return 30 * 1000; // 30 seconds for testing
+    return 30 * 1000; // TODO: REMOVEME heighborinfo testing only
     // return default_broadcast_interval_secs * 1000;
 }
 

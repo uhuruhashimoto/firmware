@@ -61,7 +61,8 @@ bool ReliableRouter::shouldFilterReceived(const meshtastic_MeshPacket *p)
         // retransmission on broadcast has hop_limit still equal to HOP_RELIABLE
         LOG_DEBUG("Resending implicit ack for a repeated floodmsg\n");
         meshtastic_MeshPacket *tosend = packetPool.allocCopy(*p);
-        tosend->hop_limit--; // bump down the hop count
+        tosend->hop_limit--;                    // bump down the hop count
+        tosend->last_sent_by_ID = getNodeNum(); // update the lastSentBy to our ID
         Router::send(tosend);
     }
 

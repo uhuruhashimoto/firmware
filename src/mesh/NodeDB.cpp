@@ -63,9 +63,7 @@ static uint8_t ourMacAddr[6];
  */
 NodeNum displayedNodeNum;
 
-NodeDB::NodeDB() : nodes(devicestate.node_db), numNodes(&devicestate.node_db_count), lastSentByIDs(devicestate.last_sent_by_IDs)
-{
-}
+NodeDB::NodeDB() : nodes(devicestate.node_db), numNodes(&devicestate.node_db_count) {}
 
 /**
  * Most (but not always) of the time we want to treat packets 'from' the local phone (where from == 0), as if they originated on
@@ -741,6 +739,10 @@ void NodeDB::updateFrom(const meshtastic_MeshPacket &mp)
 
         if (mp.rx_snr)
             info->snr = mp.rx_snr; // keep the most recent SNR we received for this node.
+
+        // The last sent ID will be 0 if the packet is from the phone, which we don't count as
+        // an edge. So we assume that if it's zero, then this packet is from our node.
+        info->last_sent_by_ID = mp.last_sent_by_ID ? mp.last_sent_by_ID : getNodeNum();
     }
 }
 

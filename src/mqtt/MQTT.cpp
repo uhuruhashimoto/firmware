@@ -535,6 +535,7 @@ std::string MQTT::downstreamPacketToJson(meshtastic_MeshPacket *mp)
     jsonObj["timestamp"] = new JSONValue((int)mp->rx_time);
     jsonObj["to"] = new JSONValue((int)mp->to);
     jsonObj["from"] = new JSONValue((int)mp->from);
+    jsonObj["lastSentBy"] = new JSONValue((int)mp->last_sent_by_ID);
     jsonObj["channel"] = new JSONValue((int)mp->channel);
     jsonObj["type"] = new JSONValue(msgType.c_str());
     jsonObj["sender"] = new JSONValue(owner.id);

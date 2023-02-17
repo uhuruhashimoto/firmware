@@ -127,6 +127,7 @@ uint32_t StoreForwardModule::historyQueueCreate(uint32_t msAgo, uint32_t to)
                 this->packetHistoryTXQueue[this->packetHistoryTXQueue_size].time = this->packetHistory[i].time;
                 this->packetHistoryTXQueue[this->packetHistoryTXQueue_size].to = this->packetHistory[i].to;
                 this->packetHistoryTXQueue[this->packetHistoryTXQueue_size].from = this->packetHistory[i].from;
+                this->packetHistoryTXQueue[this->packetHistoryTXQueue_size].lastSentBy = this->packetHistory[i].lastSentBy;
                 this->packetHistoryTXQueue[this->packetHistoryTXQueue_size].channel = this->packetHistory[i].channel;
                 this->packetHistoryTXQueue[this->packetHistoryTXQueue_size].payload_size = this->packetHistory[i].payload_size;
                 memcpy(this->packetHistoryTXQueue[this->packetHistoryTXQueue_size].payload, this->packetHistory[i].payload,
@@ -149,6 +150,7 @@ void StoreForwardModule::historyAdd(const meshtastic_MeshPacket &mp)
     this->packetHistory[this->packetHistoryCurrent].to = mp.to;
     this->packetHistory[this->packetHistoryCurrent].channel = mp.channel;
     this->packetHistory[this->packetHistoryCurrent].from = mp.from;
+    this->packetHistory[this->packetHistoryCurrent].lastSentBy = mp.last_sent_by_ID;
     this->packetHistory[this->packetHistoryCurrent].payload_size = p.payload.size;
     memcpy(this->packetHistory[this->packetHistoryCurrent].payload, p.payload.bytes, meshtastic_Constants_DATA_PAYLOAD_LEN);
 
@@ -170,6 +172,7 @@ void StoreForwardModule::sendPayload(NodeNum dest, uint32_t packetHistory_index)
     p->to = dest;
     p->from = this->packetHistoryTXQueue[packetHistory_index].from;
     p->channel = this->packetHistoryTXQueue[packetHistory_index].channel;
+    p->last_sent_by_ID = this->packetHistoryTXQueue[packetHistory_index].lastSentBy;
 
     // Let's assume that if the router received the S&F request that the client is in range.
     //   TODO: Make this configurable.

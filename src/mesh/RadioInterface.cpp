@@ -241,8 +241,9 @@ uint32_t RadioInterface::getTxDelayMsecWeighted(float snr)
 
 void printPacket(const char *prefix, const meshtastic_MeshPacket *p)
 {
-    std::string out = DEBUG_PORT.mt_sprintf("%s (id=0x%08x fr=0x%02x to=0x%02x, WantAck=%d, HopLim=%d Ch=0x%x", prefix, p->id,
-                                            p->from & 0xff, p->to & 0xff, p->want_ack, p->hop_limit, p->channel);
+    std::string out =
+        DEBUG_PORT.mt_sprintf("%s (id=0x%08x fr=0x%02x to=0x%02x, WantAck=%d, HopLim=%d Ch=0x%x lastSentBy=%d", prefix, p->id,
+                              p->from & 0xff, p->to & 0xff, p->want_ack, p->hop_limit, p->channel, p->last_sent_by_ID);
     if (p->which_payload_variant == meshtastic_MeshPacket_decoded_tag) {
         auto &s = p->decoded;
 
@@ -525,6 +526,7 @@ size_t RadioInterface::beginSending(meshtastic_MeshPacket *p)
     h->to = p->to;
     h->id = p->id;
     h->channel = p->channel;
+    h->lastSentBy = p->last_sent_by_ID;
     if (p->hop_limit > HOP_MAX) {
         LOG_WARN("hop limit %d is too high, setting to %d\n", p->hop_limit, HOP_MAX);
         p->hop_limit = HOP_MAX;
