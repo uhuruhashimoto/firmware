@@ -11,12 +11,6 @@ bool RoutingModule::handleReceivedProtobuf(const meshtastic_MeshPacket &mp, mesh
 {
     printPacket("Routing sniffing", &mp);
     router->sniffReceived(&mp, r);
-    // LOG_DEBUG("\n\n\nPacket recieved | header: to: %d from: %d id: %d wantack: %d hop_limit: %d channel %d lastSentBy %d\n",
-    //           mp.to, mp.from, mp.id, mp.want_ack, mp.hop_limit, mp.channel, mp.last_sent_by_ID);
-    // // LOG_DEBUG("\n\n\nPacket recieved | header: to: %d from: %d id: %d wantack: %d hop_limit: %d channel %d\n", mp.to,
-    // mp.from,
-    // //           mp.id, mp.want_ack, mp.hop_limit, mp.channel);
-
     // FIXME - move this to a non promsicious PhoneAPI module?
     // Note: we are careful not to send back packets that started with the phone back to the phone
     if ((mp.to == NODENUM_BROADCAST || mp.to == nodeDB.getNodeNum()) && (mp.from != 0)) {
