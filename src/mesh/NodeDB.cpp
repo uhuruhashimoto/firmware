@@ -744,10 +744,17 @@ void NodeDB::updateFrom(const meshtastic_MeshPacket &mp)
         if (mp.rx_snr)
             info->snr = mp.rx_snr; // keep the most recent SNR we received for this node.
 
+        updateNeighbors(mp);
+    }
+}
+
+void NodeDB::updateNeighbors(const meshtastic_MeshPacket &mp)
+{
+    if (mp.which_payload_variant == meshtastic_MeshPacket_decoded_tag && mp.from) {
         // The last sent ID will be 0 if the packet is from the phone, which we don't count as
         // an edge. So we assume that if it's zero, then this packet is from our node.
         int senderID = mp.last_sent_by_ID ? mp.last_sent_by_ID : getNodeNum();
-        getOrCreateNeighbor(senderID, mp.rx_time, mp.rx_snr);
+        meshtastic_Neighbor *nbr = getOrCreateNeighbor(senderID, mp.rx_time, mp.rx_snr);
     }
 }
 
@@ -798,28 +805,33 @@ meshtastic_NodeInfo *NodeDB::getOrCreateNode(NodeNum n)
 
 meshtastic_Neighbor *NodeDB::getOrCreateNeighbor(NodeNum n, int timestamp, int snr)
 {
+    // our node and the phone are the same node (not neighbors)
+    if (n == 0) {
+        n = getNodeNum();
+    }
     // look for one in the existing list
-    for (int i = 0; i < *numNeighbors; i++) {
-        meshtastic_Neighbor nbr = neighbors[i];
-        if (nbr.node_id == n) {
+    for (int i = 0; i < (*numNeighbors); i++) {
+        meshtastic_Neighbor *nbr = &neighbors[i];
+        if (nbr->node_id == n) {
             // if found, update it if our info is newer
-            if (nbr.rx_time < timestamp) {
-                nbr.rx_time = timestamp;
-                nbr.snr = snr;
+            if (nbr->rx_time < timestamp) {
+                nbr->rx_time = timestamp;
+                nbr->snr = snr;
             }
-            return &nbr;
+            return nbr;
         }
     }
     // otherwise, allocate one and assign data to it
     // TODO: max memory for the database should take neighbors into account, but currently doesn't
-    if (*numNeighbors < MAX_NUM_NODES) {
-        *numNeighbors++;
-    }
-    meshtastic_Neighbor new_nbr = neighbors[(*numNeighbors - 1)];
-    new_nbr.node_id = n;
-    new_nbr.rx_time = timestamp;
-    new_nbr.snr = snr;
-    return &new_nbr;
+    // if (*numNeighbors < MAX_NUM_NODES) {
+    //     *numNeighbors++;
+    // }
+    (*numNeighbors)++;
+    meshtastic_Neighbor *new_nbr = &neighbors[((*numNeighbors) - 1)];
+    new_nbr->node_id = n;
+    new_nbr->rx_time = timestamp;
+    new_nbr->snr = snr;
+    return new_nbr;
 }
 
 /// Record an error that should be reported via analytics

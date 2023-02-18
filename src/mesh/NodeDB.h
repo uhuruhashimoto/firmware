@@ -78,6 +78,9 @@ class NodeDB
     /// we updateGUI and updateGUIforNode if we think our this change is big enough for a redraw
     void updateFrom(const meshtastic_MeshPacket &p);
 
+    // update neighbors with subpacket sniffed from network
+    void updateNeighbors(const meshtastic_MeshPacket &mp);
+
     /** Update position info for this node based on received position data
      */
     void updatePosition(uint32_t nodeId, const meshtastic_Position &p, RxSource src = RX_SRC_RADIO);
@@ -148,7 +151,7 @@ class NodeDB
     meshtastic_NodeInfo *getOrCreateNode(NodeNum n);
 
     /// Ditto with a neighbor
-    meshtastic_Neighbor *NodeDB::getOrCreateNeighbor(NodeNum n, int timestamp, int snr);
+    meshtastic_Neighbor *getOrCreateNeighbor(NodeNum n, int timestamp, int snr);
 
     /// Notify observers of changes to the DB
     void notifyObservers(bool forceUpdate = false)

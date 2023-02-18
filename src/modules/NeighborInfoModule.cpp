@@ -35,8 +35,24 @@ void printNodeDBNodes(const char *header)
     LOG_DEBUG("DB contains %d nodes\n", num_nodes);
     for (int i = 0; i < num_nodes; i++) {
         meshtastic_NodeInfo *dbEntry = nodeDB.getNodeByIndex(i);
-        LOG_DEBUG("     Node %d: node_id=%d, orig sender = %d, rx_time=%d, snr=%d\n", i, dbEntry->last_sent_by_ID, dbEntry->num,
-                  dbEntry->last_heard, dbEntry->snr);
+        LOG_DEBUG("     Node %d: node_id=%d, rx_time=%d, snr=%d\n", i, dbEntry->num, dbEntry->last_heard, dbEntry->snr);
+    }
+    LOG_DEBUG("----------------\n");
+}
+
+/*
+Prints the nodeDB neighbors
+NOTE: for debugging only
+*/
+void printNodeDBNeighbors(const char *header)
+{
+    int num_neighbors = nodeDB.getNumNeighbors();
+    LOG_DEBUG("%s NODEDB SELECTION from Node %d:\n", header, nodeDB.getNodeNum());
+    LOG_DEBUG("----------------\n");
+    LOG_DEBUG("DB contains %d neighbors\n", num_neighbors);
+    for (int i = 0; i < num_neighbors; i++) {
+        meshtastic_Neighbor *dbEntry = nodeDB.getNeighborByIndex(i);
+        LOG_DEBUG("     Node %d: node_id=%d, rx_time=%d, snr=%d\n", i, dbEntry->node_id, dbEntry->rx_time, dbEntry->snr);
     }
     LOG_DEBUG("----------------\n");
 }
@@ -113,6 +129,7 @@ uint32_t NeighborInfoModule::collectNeighborInfo(meshtastic_NeighborInfo *neighb
         }
     }
     printNodeDBNodes("DBSTATE");
+    printNodeDBNeighbors("NEIGHBORS");
     printNodeDBSelection("COLLECTED", neighborInfo);
     return neighborInfo->neighbors_count;
 }
