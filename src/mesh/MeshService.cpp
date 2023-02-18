@@ -264,6 +264,7 @@ void MeshService::sendToPhone(meshtastic_MeshPacket *p)
 
     meshtastic_MeshPacket *copied = packetPool.allocCopy(*p);
     perhapsDecode(copied);
+    nodeDB.updateNeighbors(*copied);
     assert(toPhoneQueue.enqueue(copied, 0));
     fromNum++;
 }
