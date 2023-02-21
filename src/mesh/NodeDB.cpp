@@ -743,8 +743,6 @@ void NodeDB::updateFrom(const meshtastic_MeshPacket &mp)
 
         if (mp.rx_snr)
             info->snr = mp.rx_snr; // keep the most recent SNR we received for this node.
-
-        updateNeighbors(mp);
     }
 }
 
