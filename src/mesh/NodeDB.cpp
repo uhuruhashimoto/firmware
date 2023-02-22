@@ -374,14 +374,17 @@ void NodeDB::pickNewNodeNum()
 
     // If we don't have a nodenum at app - pick an initial nodenum based on the macaddr
     if (r == 0)
-        r = (ourMacAddr[2] << 24) | (ourMacAddr[3] << 16) | (ourMacAddr[4] << 8) | ourMacAddr[5];
+        // For a two byte implementation, take only the last two bytes of the mac address.
+        // Previous 4-byte implementation was:
+        // r = (ourMacAddr[2] << 24) | (ourMacAddr[3] << 16) | (ourMacAddr[4] << 8) | ourMacAddr[5];
+        r = (ourMacAddr[4] << 8) | ourMacAddr[5];
 
     if (r == NODENUM_BROADCAST || r < NUM_RESERVED)
         r = NUM_RESERVED; // don't pick a reserved node number
 
     meshtastic_NodeInfo *found;
     while ((found = getNode(r)) && memcmp(found->user.macaddr, owner.macaddr, sizeof(owner.macaddr))) {
-        NodeNum n = random(NUM_RESERVED, NODENUM_BROADCAST); // try a new random choice
+        NodeNum n = random(NUM_RESERVED, UINT16_MAX); // try a new random choice (2 bytes max)
         LOG_DEBUG("NOTE! Our desired nodenum 0x%x is in use, so trying for 0x%x\n", r, n);
         r = n;
     }
