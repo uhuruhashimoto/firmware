@@ -32,7 +32,7 @@ typedef struct {
     /** The channel hash - used as a hint for the decoder to limit which channels we consider */
     uint8_t channel;
     /* We have two more bytes to work with and we'll use one of them for NeighborInfo */
-    uint8_t lastSentBy;
+    uint16_t lastSentBy;
 } PacketHeader;
 
 /**
