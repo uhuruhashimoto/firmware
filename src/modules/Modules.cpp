@@ -5,6 +5,7 @@
 #include "input/cardKbI2cImpl.h"
 #include "modules/AdminModule.h"
 #include "modules/CannedMessageModule.h"
+#include "modules/NeighborInfoModule.h"
 #include "modules/NodeInfoModule.h"
 #include "modules/PositionModule.h"
 #include "modules/RemoteHardwareModule.h"
@@ -14,8 +15,10 @@
 #include "modules/TraceRouteModule.h"
 #include "modules/WaypointModule.h"
 #if HAS_TELEMETRY
-#include "modules/Telemetry/AirQualityTelemetry.h"
 #include "modules/Telemetry/DeviceTelemetry.h"
+#endif
+#if HAS_SENSOR
+#include "modules/Telemetry/AirQualityTelemetry.h"
 #include "modules/Telemetry/EnvironmentTelemetry.h"
 #endif
 #ifdef ARCH_ESP32
@@ -44,6 +47,7 @@ void setupModules()
         waypointModule = new WaypointModule();
         textMessageModule = new TextMessageModule();
         traceRouteModule = new TraceRouteModule();
+        neighborInfoModule = new NeighborInfoModule();
 
         // Note: if the rest of meshtastic doesn't need to explicitly use your module, you do not need to assign the instance
         // to a global variable.
@@ -63,6 +67,8 @@ void setupModules()
 #endif
 #if HAS_TELEMETRY
         new DeviceTelemetryModule();
+#endif
+#if HAS_SENSOR
         new EnvironmentTelemetryModule();
         if (nodeTelemetrySensorsMap[meshtastic_TelemetrySensorType_PMSA003I] > 0) {
             new AirQualityTelemetryModule();

@@ -71,5 +71,7 @@ int32_t NodeInfoModule::runOnce()
         sendOurNodeInfo(NODENUM_BROADCAST, requestReplies); // Send our info (don't request replies)
     }
 
-    return default_broadcast_interval_secs * 1000;
+    return 30 * 1000; // TODO: REMOVEME heighborinfo testing only
+
+    // return getConfiguredOrDefaultMs(config.device.node_info_broadcast_secs, default_broadcast_interval_secs);
 }

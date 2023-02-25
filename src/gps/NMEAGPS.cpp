@@ -3,7 +3,7 @@
 #include "configuration.h"
 
 #include <TinyGPS++.h>
-
+#include <ctime>
 // GPS solutions older than this will be rejected - see TinyGPSDatum::age()
 #define GPS_SOL_EXPIRY_MS 5000 // in millis. give 1 second time to combine different sentences. NMEA Frequency isn't higher anyway
 #define NMEA_MSG_GXGSA "GNGSA" // GSA message (GPGSA, GNGSA etc)

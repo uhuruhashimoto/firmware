@@ -63,7 +63,11 @@ static uint8_t ourMacAddr[6];
  */
 NodeNum displayedNodeNum;
 
-NodeDB::NodeDB() : nodes(devicestate.node_db), numNodes(&devicestate.node_db_count) {}
+NodeDB::NodeDB()
+    : nodes(devicestate.node_db), numNodes(&devicestate.node_db_count), neighbors(devicestate.node_db_neighbors),
+      numNeighbors(&devicestate.node_db_neighbors_count)
+{
+}
 
 /**
  * Most (but not always) of the time we want to treat packets 'from' the local phone (where from == 0), as if they originated on
@@ -170,6 +174,8 @@ void NodeDB::installDefaultConfig()
     config.lora.hop_limit = HOP_RELIABLE;
     config.position.gps_enabled = true;
     config.position.position_broadcast_smart_enabled = true;
+    if (config.device.role != meshtastic_Config_DeviceConfig_Role_ROUTER)
+        config.device.node_info_broadcast_secs = 3 * 60 * 60;
     config.device.serial_enabled = true;
     resetRadioConfig();
     strncpy(config.network.ntp_server, "0.pool.ntp.org", 32);
@@ -368,14 +374,17 @@ void NodeDB::pickNewNodeNum()
 
     // If we don't have a nodenum at app - pick an initial nodenum based on the macaddr
     if (r == 0)
-        r = (ourMacAddr[2] << 24) | (ourMacAddr[3] << 16) | (ourMacAddr[4] << 8) | ourMacAddr[5];
+        // For a two byte implementation, take only the last two bytes of the mac address.
+        // Previous 4-byte implementation was:
+        // r = (ourMacAddr[2] << 24) | (ourMacAddr[3] << 16) | (ourMacAddr[4] << 8) | ourMacAddr[5];
+        r = (ourMacAddr[4] << 8) | ourMacAddr[5];
 
     if (r == NODENUM_BROADCAST || r < NUM_RESERVED)
         r = NUM_RESERVED; // don't pick a reserved node number
 
     meshtastic_NodeInfo *found;
     while ((found = getNode(r)) && memcmp(found->user.macaddr, owner.macaddr, sizeof(owner.macaddr))) {
-        NodeNum n = random(NUM_RESERVED, NODENUM_BROADCAST); // try a new random choice
+        NodeNum n = random(NUM_RESERVED, UINT16_MAX); // try a new random choice (2 bytes max)
         LOG_DEBUG("NOTE! Our desired nodenum 0x%x is in use, so trying for 0x%x\n", r, n);
         r = n;
     }
@@ -740,6 +749,16 @@ void NodeDB::updateFrom(const meshtastic_MeshPacket &mp)
     }
 }
 
+void NodeDB::updateNeighbors(const meshtastic_MeshPacket &mp)
+{
+    if (mp.which_payload_variant == meshtastic_MeshPacket_decoded_tag && mp.from) {
+        // The last sent ID will be 0 if the packet is from the phone, which we don't count as
+        // an edge. So we assume that if it's zero, then this packet is from our node.
+        int senderID = mp.last_sent_by_ID ? mp.last_sent_by_ID : getNodeNum();
+        getOrCreateNeighbor(senderID, mp.rx_time, mp.rx_snr);
+    }
+}
+
 /// Find a node in our DB, return null for missing
 /// NOTE: This function might be called from an ISR
 meshtastic_NodeInfo *NodeDB::getNode(NodeNum n)
@@ -783,6 +802,37 @@ meshtastic_NodeInfo *NodeDB::getOrCreateNode(NodeNum n)
     }
 
     return info;
+}
+
+meshtastic_Neighbor *NodeDB::getOrCreateNeighbor(NodeNum n, int timestamp, int snr)
+{
+    // our node and the phone are the same node (not neighbors)
+    if (n == 0) {
+        n = getNodeNum();
+    }
+    // look for one in the existing list
+    for (int i = 0; i < (*numNeighbors); i++) {
+        meshtastic_Neighbor *nbr = &neighbors[i];
+        if (nbr->node_id == n) {
+            // if found, update it if our info is newer
+            if (nbr->rx_time < timestamp) {
+                nbr->rx_time = timestamp;
+                nbr->snr = snr;
+            }
+            return nbr;
+        }
+    }
+    // otherwise, allocate one and assign data to it
+    // TODO: max memory for the database should take neighbors into account, but currently doesn't
+    // if (*numNeighbors < MAX_NUM_NODES) {
+    //     *numNeighbors++;
+    // }
+    (*numNeighbors)++;
+    meshtastic_Neighbor *new_nbr = &neighbors[((*numNeighbors) - 1)];
+    new_nbr->node_id = n;
+    new_nbr->rx_time = timestamp;
+    new_nbr->snr = snr;
+    return new_nbr;
 }
 
 /// Record an error that should be reported via analytics
