@@ -90,7 +90,7 @@ NeighborInfoModule::NeighborInfoModule()
     : ProtobufModule("neighborinfo", meshtastic_PortNum_NEIGHBORINFO_APP, &meshtastic_NeighborInfo_msg), concurrency::OSThread(
                                                                                                              "NeighborInfoModule")
 {
-    ourPortNum = meshtastic_PortNum_PRIVATE_APP;
+    ourPortNum = meshtastic_PortNum_NEIGHBORINFO_APP;
     setIntervalFromNow(30 * 1000);
 }
 
@@ -111,7 +111,6 @@ Assumes that the neighborInfo packet has been allocated
 */
 uint32_t NeighborInfoModule::collectNeighborInfo(meshtastic_NeighborInfo *neighborInfo)
 {
-    // TODO: star graph; mask for real neighbors in the nodeDB
     int num_neighbors = nodeDB.getNumNeighbors();
     int current_time = getTime();
     int my_node_id = nodeDB.getNodeNum();
@@ -120,6 +119,7 @@ uint32_t NeighborInfoModule::collectNeighborInfo(meshtastic_NeighborInfo *neighb
 
     for (int i = 0; i < num_neighbors; i++) {
         meshtastic_Neighbor *dbEntry = nodeDB.getNeighborByIndex(i);
+        dbEntry->node_id = dbEntry->node_id & 0x0000ffff;
         if (((current_time - dbEntry->rx_time < MAX_NEIGHBOR_AGE) || (dbEntry->rx_time == 0)) &&
             (neighborInfo->neighbors_count < MAX_NUM_NEIGHBORS) && (dbEntry->node_id != my_node_id)) {
             neighborInfo->neighbors[neighborInfo->neighbors_count].node_id = dbEntry->node_id;
@@ -144,7 +144,7 @@ void NeighborInfoModule::sendNeighborInfo(NodeNum dest, bool wantReplies)
         p->to = dest;
         p->decoded.want_response = wantReplies;
         printNeighborInfo("SENDING", neighborInfo);
-        service.sendToMesh(p);
+        service.sendToMesh(p, RX_SRC_LOCAL, true);
     } else {
         // If we have no neighbors in our dB, we're either unconnected, or our
         // nodeDB has not yet be fully populated. In either case, print an error
@@ -172,8 +172,7 @@ Pass it to an upper client; do not persist this data on the mesh
 */
 bool NeighborInfoModule::handleReceivedProtobuf(const meshtastic_MeshPacket &mp, meshtastic_NeighborInfo *np)
 {
-    // TODO: check if we want to handle this packet
     printNeighborInfo("RECIEVED", np);
     // No need for others to handle this packet
-    return true;
+    return false;
 }
