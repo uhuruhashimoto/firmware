@@ -751,7 +751,7 @@ void NodeDB::updateNeighbors(const meshtastic_MeshPacket &mp, meshtastic_Neighbo
     // The last sent ID will be 0 if the packet is from the phone, which we don't count as
     // an edge. So we assume that if it's zero, then this packet is from our node.
     if (mp.which_payload_variant == meshtastic_MeshPacket_decoded_tag && mp.from) {
-        getOrCreateNeighbor(np->last_send_by_id, mp.rx_time, mp.rx_snr);
+        getOrCreateNeighbor(np->last_sent_by_id, mp.rx_time, mp.rx_snr);
     }
 }
 

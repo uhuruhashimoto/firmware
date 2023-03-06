@@ -173,6 +173,7 @@ bool NeighborInfoModule::handleReceivedProtobuf(const meshtastic_MeshPacket &mp,
 {
     printNeighborInfo("RECIEVED", np);
     updateNeighbors(mp, np);
+    np->last_sent_by_id = nodeDB.getNodeNum();
     // Allow others to handle this packet
     return false;
 }
