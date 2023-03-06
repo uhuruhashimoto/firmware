@@ -1,6 +1,5 @@
 #pragma once
 #include "ProtobufModule.h"
-#include "mesh/generated/meshtastic/neighborinfo.pb.h"
 
 /*
  * Neighborinfo module for sending info on each node's 0-hop neighbors to the mesh
