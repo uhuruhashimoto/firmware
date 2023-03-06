@@ -63,7 +63,11 @@ static uint8_t ourMacAddr[6];
  */
 NodeNum displayedNodeNum;
 
-NodeDB::NodeDB() : nodes(devicestate.node_db), numNodes(&devicestate.node_db_count) {}
+NodeDB::NodeDB()
+    : nodes(devicestate.node_db), numNodes(&devicestate.node_db_count), neighbors(devicestate.node_db_neighbors),
+      numNeighbors(&devicestate.node_db_neighbors_count)
+{
+}
 
 /**
  * Most (but not always) of the time we want to treat packets 'from' the local phone (where from == 0), as if they originated on
@@ -170,6 +174,8 @@ void NodeDB::installDefaultConfig()
     config.lora.hop_limit = HOP_RELIABLE;
     config.position.gps_enabled = true;
     config.position.position_broadcast_smart_enabled = true;
+    if (config.device.role != meshtastic_Config_DeviceConfig_Role_ROUTER)
+        config.device.node_info_broadcast_secs = 3 * 60 * 60;
     config.device.serial_enabled = true;
     resetRadioConfig();
     strncpy(config.network.ntp_server, "0.pool.ntp.org", 32);
@@ -740,6 +746,15 @@ void NodeDB::updateFrom(const meshtastic_MeshPacket &mp)
     }
 }
 
+void NodeDB::updateNeighbors(const meshtastic_MeshPacket &mp, meshtastic_NeighborInfo *np)
+{
+    // The last sent ID will be 0 if the packet is from the phone, which we don't count as
+    // an edge. So we assume that if it's zero, then this packet is from our node.
+    if (mp.which_payload_variant == meshtastic_MeshPacket_decoded_tag && mp.from) {
+        getOrCreateNeighbor(np->last_sent_by_id, mp.rx_time, mp.rx_snr);
+    }
+}
+
 /// Find a node in our DB, return null for missing
 /// NOTE: This function might be called from an ISR
 meshtastic_NodeInfo *NodeDB::getNode(NodeNum n)
@@ -783,6 +798,36 @@ meshtastic_NodeInfo *NodeDB::getOrCreateNode(NodeNum n)
     }
 
     return info;
+}
+
+meshtastic_Neighbor *NodeDB::getOrCreateNeighbor(NodeNum n, int timestamp, int snr)
+{
+    // our node and the phone are the same node (not neighbors)
+    if (n == 0) {
+        n = getNodeNum();
+    }
+    // look for one in the existing list
+    for (int i = 0; i < (*numNeighbors); i++) {
+        meshtastic_Neighbor *nbr = &neighbors[i];
+        if (nbr->node_id == n) {
+            // if found, update it if our info is newer
+            if (nbr->rx_time < timestamp) {
+                nbr->rx_time = timestamp;
+                nbr->snr = snr;
+            }
+            return nbr;
+        }
+    }
+    // otherwise, allocate one and assign data to it
+    // TODO: max memory for the database should take neighbors into account, but currently doesn't
+    if (*numNeighbors < MAX_NUM_NODES) {
+        (*numNeighbors)++;
+    }
+    meshtastic_Neighbor *new_nbr = &neighbors[((*numNeighbors) - 1)];
+    new_nbr->node_id = n;
+    new_nbr->rx_time = timestamp;
+    new_nbr->snr = snr;
+    return new_nbr;
 }
 
 /// Record an error that should be reported via analytics
