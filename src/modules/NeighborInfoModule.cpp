@@ -141,19 +141,13 @@ void NeighborInfoModule::sendNeighborInfo(NodeNum dest, bool wantReplies)
 {
     meshtastic_NeighborInfo *neighborInfo = allocateNeighborInfoPacket();
     collectNeighborInfo(neighborInfo);
-    if (neighborInfo->neighbors_count > 0) {
-        meshtastic_MeshPacket *p = allocDataProtobuf(*neighborInfo);
-        p->to = dest;
-        p->decoded.want_response = wantReplies;
-        printNeighborInfo("SENDING", neighborInfo);
-        service.sendToMesh(p, RX_SRC_LOCAL, true);
-    } else {
-        // If we have no neighbors in our dB, we're either unconnected, or our
-        // nodeDB has not yet be fully populated. In either case, print an error
-        // message to the console and free our resources.
-        LOG_INFO("Node %d has found no neighbors in its nodeDB. Cancelling NeighborInfo send.\n", neighborInfo->node_id);
-        free(neighborInfo);
-    }
+    meshtastic_MeshPacket *p = allocDataProtobuf(*neighborInfo);
+    // send regardless of whether or not we have neighbors in our DB,
+    // because we want to get neighbors for the next cycle
+    p->to = dest;
+    p->decoded.want_response = wantReplies;
+    printNeighborInfo("SENDING", neighborInfo);
+    service.sendToMesh(p, RX_SRC_LOCAL, true);
 }
 
 /*
