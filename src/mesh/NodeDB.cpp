@@ -746,24 +746,12 @@ void NodeDB::updateFrom(const meshtastic_MeshPacket &mp)
     }
 }
 
-void NodeDB::updateNeighbors(const meshtastic_MeshPacket &mp)
+void NodeDB::updateNeighbors(const meshtastic_MeshPacket &mp, meshtastic_NeighborInfo *np)
 {
     // The last sent ID will be 0 if the packet is from the phone, which we don't count as
     // an edge. So we assume that if it's zero, then this packet is from our node.
     if (mp.which_payload_variant == meshtastic_MeshPacket_decoded_tag && mp.from) {
-        meshtastic_NeighborInfo *decoded = (meshtastic_NeighborInfo *)malloc(sizeof(meshtastic_NeighborInfo));
-        meshtastic_MeshPacket *mp_copy = (meshtastic_MeshPacket *)malloc(sizeof(meshtastic_MeshPacket));
-        memcpy(mp_copy, &mp, sizeof(meshtastic_MeshPacket));
-        memset(decoded, 0, sizeof(meshtastic_NeighborInfo));
-
-        if (pb_decode_from_bytes(mp_copy->decoded.payload.bytes, mp_copy->decoded.payload.size, &meshtastic_NeighborInfo_msg,
-                                 decoded)) {
-            getOrCreateNeighbor(decoded->last_send_by_id, mp.rx_time, mp.rx_snr);
-        } else {
-            LOG_ERROR("Error decoding protobuf for neighborinfo message!\n");
-        }
-        free(decoded);
-        free(mp_copy);
+        getOrCreateNeighbor(np->last_send_by_id, mp.rx_time, mp.rx_snr);
     }
 }
 
