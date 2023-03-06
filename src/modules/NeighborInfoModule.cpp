@@ -119,7 +119,6 @@ uint32_t NeighborInfoModule::collectNeighborInfo(meshtastic_NeighborInfo *neighb
 
     for (int i = 0; i < num_neighbors; i++) {
         meshtastic_Neighbor *dbEntry = nodeDB.getNeighborByIndex(i);
-        dbEntry->node_id = dbEntry->node_id & 0x0000ffff;
         if (((current_time - dbEntry->rx_time < MAX_NEIGHBOR_AGE) || (dbEntry->rx_time == 0)) &&
             (neighborInfo->neighbors_count < MAX_NUM_NEIGHBORS) && (dbEntry->node_id != my_node_id)) {
             neighborInfo->neighbors[neighborInfo->neighbors_count].node_id = dbEntry->node_id;
