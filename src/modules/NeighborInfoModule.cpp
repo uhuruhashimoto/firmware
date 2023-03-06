@@ -14,7 +14,8 @@ NOTE: For debugging only
 */
 void printNeighborInfo(const char *header, const meshtastic_NeighborInfo *np)
 {
-    LOG_DEBUG("%s NEIGHBORINFO PACKET from Node %d (recieved by %d)\n", header, np->node_id, nodeDB.getNodeNum());
+    LOG_DEBUG("%s NEIGHBORINFO PACKET from Node %d to Node %d (last sent by %d)\n", header, np->node_id, nodeDB.getNodeNum(),
+              np->last_sent_by_id);
     LOG_DEBUG("----------------\n");
     LOG_DEBUG("Packet contains %d neighbors\n", np->neighbors_count);
     for (int i = 0; i < np->neighbors_count; i++) {
@@ -115,6 +116,8 @@ uint32_t NeighborInfoModule::collectNeighborInfo(meshtastic_NeighborInfo *neighb
     int current_time = getTime();
     int my_node_id = nodeDB.getNodeNum();
     neighborInfo->node_id = my_node_id;
+    neighborInfo->last_sent_by_id = my_node_id;
+    neighborInfo->last_sent_by_id = my_node_id;
     neighborInfo->tx_time = current_time;
 
     for (int i = 0; i < num_neighbors; i++) {
