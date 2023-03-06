@@ -79,11 +79,11 @@ class NodeDB
     void updateFrom(const meshtastic_MeshPacket &p);
 
     // update neighbors with subpacket sniffed from network
-    void updateNeighbors(const meshtastic_MeshPacket &mp, meshtastic_NeighborInfo *np)
+    void updateNeighbors(const meshtastic_MeshPacket &mp, meshtastic_NeighborInfo *np);
 
-        /** Update position info for this node based on received position data
-         */
-        void updatePosition(uint32_t nodeId, const meshtastic_Position &p, RxSource src = RX_SRC_RADIO);
+    /** Update position info for this node based on received position data
+     */
+    void updatePosition(uint32_t nodeId, const meshtastic_Position &p, RxSource src = RX_SRC_RADIO);
 
     /** Update telemetry info for this node based on received metrics
      */
