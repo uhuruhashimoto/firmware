@@ -94,14 +94,7 @@ class NodeDB
     void updateUser(uint32_t nodeId, const meshtastic_User &p);
 
     /// @return our node number
-    NodeNum getNodeNum()
-    {
-        uint32_t num = myNodeInfo.my_node_num;
-        if (num > UINT16_MAX) {
-            num = num & 0x0000ffff;
-        }
-        return num;
-    }
+    NodeNum getNodeNum() { return myNodeInfo.my_node_num; }
 
     size_t getNumNodes() { return *numNodes; }
 
