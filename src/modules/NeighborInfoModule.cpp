@@ -158,8 +158,7 @@ int32_t NeighborInfoModule::runOnce()
 {
     bool requestReplies = false;
     sendNeighborInfo(NODENUM_BROADCAST, requestReplies);
-    return 30 * 1000; // TODO: REMOVEME heighborinfo testing only
-    // return default_broadcast_interval_secs * 1000;
+    return default_broadcast_interval_secs * 1000;
 }
 
 /*
