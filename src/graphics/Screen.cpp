@@ -19,6 +19,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 */
+#include "Screen.h"
 #include "configuration.h"
 #if HAS_SCREEN
 #include <OLEDDisplay.h>
@@ -26,7 +27,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "GPS.h"
 #include "MeshService.h"
 #include "NodeDB.h"
-#include "Screen.h"
 #include "gps/GeoCoord.h"
 #include "gps/RTC.h"
 #include "graphics/images.h"
@@ -48,6 +48,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #ifdef OLED_RU
 #include "fonts/OLEDDisplayFontsRU.h"
+#endif
+
+#ifdef OLED_UA
+#include "fonts/OLEDDisplayFontsUA.h"
 #endif
 
 using namespace meshtastic; /** @todo remove */
@@ -106,7 +110,11 @@ static uint16_t displayWidth, displayHeight;
 #ifdef OLED_RU
 #define FONT_SMALL ArialMT_Plain_10_RU
 #else
+#ifdef OLED_UA
+#define FONT_SMALL ArialMT_Plain_10_UA
+#else
 #define FONT_SMALL ArialMT_Plain_10 // Height: 13
+#endif
 #endif
 #define FONT_MEDIUM ArialMT_Plain_16 // Height: 19
 #define FONT_LARGE ArialMT_Plain_24  // Height: 28
@@ -340,8 +348,6 @@ static void drawFrameFirmware(OLEDDisplay *display, OLEDDisplayUiState *state, i
 /// Draw the last text message we received
 static void drawCriticalFaultFrame(OLEDDisplay *display, OLEDDisplayUiState *state, int16_t x, int16_t y)
 {
-    displayedNodeNum = 0; // Not currently showing a node pane
-
     display->setTextAlignment(TEXT_ALIGN_LEFT);
     display->setFont(FONT_MEDIUM);
 
@@ -362,8 +368,6 @@ static bool shouldDrawMessage(const meshtastic_MeshPacket *packet)
 /// Draw the last text message we received
 static void drawTextMessageFrame(OLEDDisplay *display, OLEDDisplayUiState *state, int16_t x, int16_t y)
 {
-    displayedNodeNum = 0; // Not currently showing a node pane
-
     // the max length of this buffer is much longer than we can possibly print
     static char tempBuf[237];
 
@@ -510,18 +514,12 @@ static void drawGPS(OLEDDisplay *display, int16_t x, int16_t y, const GPSStatus 
 // Draw status when gps is disabled by PMU
 static void drawGPSpowerstat(OLEDDisplay *display, int16_t x, int16_t y, const GPSStatus *gps)
 {
-#ifdef HAS_PMU
     String displayLine = "GPS disabled";
     int16_t xPos = display->getStringWidth(displayLine);
 
     if (!config.position.gps_enabled) {
         display->drawString(x + xPos, y, displayLine);
-#ifdef GPS_POWER_TOGGLE
-        display->drawString(x + xPos, y - 2 + FONT_HEIGHT_SMALL, " by button");
-#endif
-        // display->drawString(x + xPos, y + 2, displayLine);
     }
-#endif
 }
 
 static void drawGPSAltitude(OLEDDisplay *display, int16_t x, int16_t y, const GPSStatus *gps)
@@ -771,7 +769,6 @@ static void drawNodeInfo(OLEDDisplay *display, OLEDDisplayUiState *state, int16_
             nodeIndex = (nodeIndex + 1) % nodeDB.getNumNodes();
             n = nodeDB.getNodeByIndex(nodeIndex);
         }
-        displayedNodeNum = n->num;
     }
 
     meshtastic_NodeInfo *node = nodeDB.getNodeByIndex(nodeIndex);
@@ -884,13 +881,11 @@ static void drawNodeInfo(OLEDDisplay *display, OLEDDisplayUiState *state, int16_
 //     }
 // }
 // #else
-Screen::Screen(uint8_t address, int sda, int scl)
-    : OSThread("Screen"), cmdQueue(32),
-      dispdev(address, sda, scl,
-              screen_model == meshtastic_Config_DisplayConfig_OledType_OLED_SH1107 ? GEOMETRY_128_128 : GEOMETRY_128_64),
+Screen::Screen(ScanI2C::DeviceAddress address, meshtastic_Config_DisplayConfig_OledType screenType, OLEDDISPLAY_GEOMETRY geometry)
+    : concurrency::OSThread("Screen"), address_found(address), model(screenType), geometry(geometry), cmdQueue(32),
+      dispdev(address.address, -1, -1, geometry, (address.port == ScanI2C::I2CPort::WIRE1) ? HW_I2C::I2C_TWO : HW_I2C::I2C_ONE),
       ui(&dispdev)
 {
-    address_found = address;
     cmdQueue.setReader(this);
 }
 // #endif
@@ -938,9 +933,11 @@ void Screen::setup()
     useDisplay = true;
 
 #ifdef AutoOLEDWire_h
-    if (screen_model == meshtastic_Config_DisplayConfig_OledType_OLED_SH1107)
-        screen_model = meshtastic_Config_DisplayConfig_OledType_OLED_SH1106;
-    dispdev.setDetected(screen_model);
+    dispdev.setDetected(model);
+#endif
+
+#ifdef USE_SH1107_128_64
+    dispdev.setSubtype(7);
 #endif
 
     // Initialising the UI will init the display too.
@@ -1175,7 +1172,7 @@ void Screen::drawDebugInfoWiFiTrampoline(OLEDDisplay *display, OLEDDisplayUiStat
  * it is expected that this will be used during the boot phase */
 void Screen::setSSLFrames()
 {
-    if (address_found) {
+    if (address_found.address) {
         // LOG_DEBUG("showing SSL frames\n");
         static FrameCallback sslFrames[] = {drawSSLScreen};
         ui.setFrames(sslFrames, 1);
@@ -1187,7 +1184,7 @@ void Screen::setSSLFrames()
  * it is expected that this will be used during the boot phase */
 void Screen::setWelcomeFrames()
 {
-    if (address_found) {
+    if (address_found.address) {
         // LOG_DEBUG("showing Welcome frames\n");
         ui.disableAllIndicators();
 
@@ -1209,7 +1206,7 @@ void Screen::setFrames()
     LOG_DEBUG("Total frame count: %d\n", totalFrameCount);
 
     // We don't show the node info our our node (if we have it yet - we should)
-    size_t numnodes = nodeStatus->getNumTotal();
+    size_t numnodes = nodeDB.getNumNodes();
     if (numnodes > 0)
         numnodes--;
 
@@ -1391,8 +1388,6 @@ void Screen::setFastFramerate()
 
 void DebugInfo::drawFrame(OLEDDisplay *display, OLEDDisplayUiState *state, int16_t x, int16_t y)
 {
-    displayedNodeNum = 0; // Not currently showing a node pane
-
     display->setFont(FONT_SMALL);
 
     // The coordinates define the left starting point of the text
@@ -1432,11 +1427,7 @@ void DebugInfo::drawFrame(OLEDDisplay *display, OLEDDisplayUiState *state, int16
     }
     // Display GPS status
     if (!config.position.gps_enabled) {
-        int16_t yPos = y + 2;
-#ifdef GPS_POWER_TOGGLE
-        yPos = (y + 10 + FONT_HEIGHT_SMALL);
-#endif
-        drawGPSpowerstat(display, x, yPos, gpsStatus);
+        drawGPSpowerstat(display, x, y + 2, gpsStatus);
     } else {
         if (config.display.displaymode == meshtastic_Config_DisplayConfig_DisplayMode_DEFAULT) {
             drawGPS(display, x + (SCREEN_WIDTH * 0.63), y + 2, gpsStatus);
@@ -1503,8 +1494,6 @@ void DebugInfo::drawFrameWiFi(OLEDDisplay *display, OLEDDisplayUiState *state, i
 {
 #if HAS_WIFI
     const char *wifiName = config.network.wifi_ssid;
-
-    displayedNodeNum = 0; // Not currently showing a node pane
 
     display->setFont(FONT_SMALL);
 
@@ -1636,8 +1625,6 @@ void DebugInfo::drawFrameWiFi(OLEDDisplay *display, OLEDDisplayUiState *state, i
 
 void DebugInfo::drawFrameSettings(OLEDDisplay *display, OLEDDisplayUiState *state, int16_t x, int16_t y)
 {
-    displayedNodeNum = 0; // Not currently showing a node pane
-
     display->setFont(FONT_SMALL);
 
     // The coordinates define the left starting point of the text
@@ -1753,6 +1740,9 @@ void DebugInfo::drawFrameSettings(OLEDDisplay *display, OLEDDisplayUiState *stat
         drawGPScoordinates(display, x, y + FONT_HEIGHT_SMALL * 3, gpsStatus);
     } else {
         drawGPSpowerstat(display, x - (SCREEN_WIDTH / 4), y + FONT_HEIGHT_SMALL * 2, gpsStatus);
+#ifdef GPS_POWER_TOGGLE
+        display->drawString(x + 30, (y + FONT_HEIGHT_SMALL * 3), " by button");
+#endif
     }
     /* Display a heartbeat pixel that blinks every time the frame is redrawn */
 #ifdef SHOW_REDRAWS
@@ -1820,5 +1810,6 @@ int Screen::handleUIFrameEvent(const UIFrameEvent *event)
 }
 
 } // namespace graphics
-
+#else
+graphics::Screen::Screen(ScanI2C::DeviceAddress, meshtastic_Config_DisplayConfig_OledType, OLEDDISPLAY_GEOMETRY) {}
 #endif // HAS_SCREEN

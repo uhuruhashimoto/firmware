@@ -113,6 +113,9 @@ class NodeDB
     /// pick a provisional nodenum we hope no one is using
     void pickNewNodeNum();
 
+    // get channel channel index we heard a nodeNum on, defaults to 0 if not found
+    uint8_t getNodeChannel(NodeNum n);
+
     /// Find a node in our DB, return null for missing
     meshtastic_NodeInfo *getNode(NodeNum n);
 
@@ -152,12 +155,6 @@ class NodeDB
     /// Reinit device state from scratch (not loading from disk)
     void installDefaultDeviceState(), installDefaultChannels(), installDefaultConfig(), installDefaultModuleConfig();
 };
-
-/**
- * The node number the user is currently looking at
- * 0 if none
- */
-extern NodeNum displayedNodeNum;
 
 extern NodeDB nodeDB;
 

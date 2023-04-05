@@ -13,6 +13,10 @@
 #include <WiFi.h>
 #endif
 
+#ifndef DELAY_FOREVER
+#define DELAY_FOREVER portMAX_DELAY
+#endif
+
 #ifdef HAS_PMU
 #include "XPowersAXP192.tpp"
 #include "XPowersAXP2101.tpp"
@@ -156,8 +160,18 @@ class AnalogBatteryLevel : public HasBatteryLevel
 
     /// If we see a battery voltage higher than physics allows - assume charger is pumping
     /// in power
+    /// On some boards we don't have the power management chip (like AXPxxxx)
+    /// so we use EXT_PWR_DETECT GPIO pin to detect external power source
     virtual bool isVbusIn() override
     {
+#ifdef EXT_PWR_DETECT
+        // if external powered that pin will be pulled up
+        if (digitalRead(EXT_PWR_DETECT) == HIGH) {
+            return true;
+        }
+        // if it's not HIGH - check the battery
+#endif
+
         return getBattVoltage() > chargingVolt;
     }
 
@@ -204,6 +218,10 @@ Power::Power() : OSThread("Power")
 
 bool Power::analogInit()
 {
+#ifdef EXT_PWR_DETECT
+    pinMode(EXT_PWR_DETECT, INPUT);
+#endif
+
 #ifdef BATTERY_PIN
     LOG_DEBUG("Using analog input %d for battery level\n", BATTERY_PIN);
 
@@ -256,16 +274,24 @@ void Power::shutdown()
     digitalWrite(PIN_EINK_EN, LOW); // power off backlight first
 #endif
 
-#ifdef HAS_PMU
     LOG_INFO("Shutting down\n");
+
+#ifdef HAS_PMU
     if (PMU) {
         PMU->setChargingLedMode(XPOWERS_CHG_LED_OFF);
-        PMU->shutdown();
     }
-#elif defined(ARCH_NRF52)
-    playBeep();
+#endif
+
+#if defined(ARCH_NRF52) || defined(ARCH_ESP32)
+#ifdef PIN_LED1
     ledOff(PIN_LED1);
+#endif
+#ifdef PIN_LED2
     ledOff(PIN_LED2);
+#endif
+#ifdef PIN_LED3
+    ledOff(PIN_LED2);
+#endif
     doDeepSleep(DELAY_FOREVER);
 #endif
 }
@@ -515,8 +541,39 @@ bool Power::axpChipInit()
 
     } else if (PMU->getChipModel() == XPOWERS_AXP2101) {
 
-        // t-beam s3 core
+        /*The alternative version of T-Beam 1.1 differs from T-Beam V1.1 in that it uses an AXP2101 power chip*/
+#if (HW_VENDOR == meshtastic_HardwareModel_TBEAM)
+        // Unuse power channel
+        PMU->disablePowerOutput(XPOWERS_DCDC2);
+        PMU->disablePowerOutput(XPOWERS_DCDC3);
+        PMU->disablePowerOutput(XPOWERS_DCDC4);
+        PMU->disablePowerOutput(XPOWERS_DCDC5);
+        PMU->disablePowerOutput(XPOWERS_ALDO1);
+        PMU->disablePowerOutput(XPOWERS_ALDO4);
+        PMU->disablePowerOutput(XPOWERS_BLDO1);
+        PMU->disablePowerOutput(XPOWERS_BLDO2);
+        PMU->disablePowerOutput(XPOWERS_DLDO1);
+        PMU->disablePowerOutput(XPOWERS_DLDO2);
 
+        // GNSS RTC PowerVDD 3300mV
+        PMU->setPowerChannelVoltage(XPOWERS_VBACKUP, 3300);
+        PMU->enablePowerOutput(XPOWERS_VBACKUP);
+
+        // ESP32 VDD 3300mV
+        //  ! No need to set, automatically open , Don't close it
+        //  PMU->setPowerChannelVoltage(XPOWERS_DCDC1, 3300);
+        //  PMU->setProtectedChannel(XPOWERS_DCDC1);
+
+        // LoRa VDD 3300mV
+        PMU->setPowerChannelVoltage(XPOWERS_ALDO2, 3300);
+        PMU->enablePowerOutput(XPOWERS_ALDO2);
+
+        // GNSS VDD 3300mV
+        PMU->setPowerChannelVoltage(XPOWERS_ALDO3, 3300);
+        PMU->enablePowerOutput(XPOWERS_ALDO3);
+
+#elif (HW_VENDOR == meshtastic_HardwareModel_LILYGO_TBEAM_S3_CORE)
+        // t-beam s3 core
         /**
          * gnss module power channel
          * The default ALDO4 is off, you need to turn on the GNSS power first, otherwise it will be invalid during initialization
@@ -558,6 +615,8 @@ bool Power::axpChipInit()
         PMU->disablePowerOutput(XPOWERS_DLDO1); // Invalid power channel, it does not exist
         PMU->disablePowerOutput(XPOWERS_DLDO2); // Invalid power channel, it does not exist
         PMU->disablePowerOutput(XPOWERS_VBACKUP);
+
+#endif
 
         // disable all axp chip interrupt
         PMU->disableIRQ(XPOWERS_AXP2101_ALL_IRQ);
