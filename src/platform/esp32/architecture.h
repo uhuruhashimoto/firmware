@@ -36,6 +36,9 @@
 #ifndef HAS_RTC
 #define HAS_RTC 1
 #endif
+#ifndef HAS_CPU_SHUTDOWN
+#define HAS_CPU_SHUTDOWN 1
+#endif
 
 #if defined(HAS_AXP192) || defined(HAS_AXP2101)
 #define HAS_PMU
@@ -95,6 +98,10 @@
 #define HW_VENDOR meshtastic_HardwareModel_TLORA_T3_S3
 #elif defined(BETAFPV_2400_TX)
 #define HW_VENDOR meshtastic_HardwareModel_BETAFPV_2400_TX
+#elif defined(NANO_G1_EXPLORER)
+#define HW_VENDOR meshtastic_HardwareModel_NANO_G1_EXPLORER
+#elif defined(BETAFPV_900_TX_NANO)
+#define HW_VENDOR meshtastic_HardwareModel_BETAFPV_900_NANO_TX
 #endif
 
 //

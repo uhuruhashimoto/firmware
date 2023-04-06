@@ -1,5 +1,6 @@
 #include "configuration.h"
 
+#include "../detect/ScanI2C.h"
 #include "Channels.h"
 #include "CryptoEngine.h"
 #include "FSCommon.h"
@@ -56,12 +57,6 @@ extern void getMacAddr(uint8_t *dmac);
 meshtastic_User &owner = devicestate.owner;
 
 static uint8_t ourMacAddr[6];
-
-/**
- * The node number the user is currently looking at
- * 0 if none
- */
-NodeNum displayedNodeNum;
 
 NodeDB::NodeDB()
     : nodes(devicestate.node_db), numNodes(&devicestate.node_db_count), neighbors(devicestate.node_db_neighbors),
@@ -174,6 +169,8 @@ void NodeDB::installDefaultConfig()
     config.lora.hop_limit = HOP_RELIABLE;
     config.position.gps_enabled = true;
     config.position.position_broadcast_smart_enabled = true;
+    config.position.broadcast_smart_minimum_distance = 100;
+    config.position.broadcast_smart_minimum_interval_secs = 30;
     if (config.device.role != meshtastic_Config_DeviceConfig_Role_ROUTER)
         config.device.node_info_broadcast_secs = 3 * 60 * 60;
     config.device.serial_enabled = true;
@@ -185,7 +182,7 @@ void NodeDB::installDefaultConfig()
 #if defined(ST7735_CS) || defined(USE_EINK) || defined(ILI9341_DRIVER)
     bool hasScreen = true;
 #else
-    bool hasScreen = screen_found;
+    bool hasScreen = screen_found.port != ScanI2C::I2CPort::NO_I2C;
 #endif
     config.bluetooth.mode = hasScreen ? meshtastic_Config_BluetoothConfig_PairingMode_RANDOM_PIN
                                       : meshtastic_Config_BluetoothConfig_PairingMode_FIXED_PIN;
@@ -239,15 +236,11 @@ void NodeDB::installRoleDefaults(meshtastic_Config_DeviceConfig_Role role)
         initModuleConfigIntervals();
     } else if (role == meshtastic_Config_DeviceConfig_Role_REPEATER) {
         config.display.screen_on_secs = 1;
-        meshtastic_Channel &ch = channels.getByIndex(channels.getPrimaryIndex());
-        meshtastic_ChannelSettings &channelSettings = ch.settings;
-        uint8_t defaultpskIndex = 1;
-        channelSettings.psk.bytes[0] = defaultpskIndex;
-        channelSettings.psk.size = 1;
     } else if (role == meshtastic_Config_DeviceConfig_Role_TRACKER) {
-        config.position.position_broadcast_smart_enabled = false;
-        config.position.position_broadcast_secs = 120;
-        config.position.gps_update_interval = 60;
+        config.position.gps_update_interval = 30;
+    } else if (role == meshtastic_Config_DeviceConfig_Role_SENSOR) {
+        moduleConfig.telemetry.environment_measurement_enabled = true;
+        moduleConfig.telemetry.environment_update_interval = 300;
     }
 }
 
@@ -255,6 +248,7 @@ void NodeDB::initModuleConfigIntervals()
 {
     moduleConfig.telemetry.device_update_interval = default_broadcast_interval_secs;
     moduleConfig.telemetry.environment_update_interval = default_broadcast_interval_secs;
+    moduleConfig.telemetry.air_quality_interval = default_broadcast_interval_secs;
 }
 
 void NodeDB::installDefaultChannels()
@@ -720,9 +714,8 @@ void NodeDB::updateUser(uint32_t nodeId, const meshtastic_User &p)
         powerFSM.trigger(EVENT_NODEDB_UPDATED);
         notifyObservers(true); // Force an update whether or not our node counts have changed
 
-        // Not really needed - we will save anyways when we go to sleep
         // We just changed something important about the user, store our DB
-        // saveToDisk();
+        saveToDisk(SEGMENT_DEVICESTATE);
     }
 }
 
@@ -731,7 +724,7 @@ void NodeDB::updateUser(uint32_t nodeId, const meshtastic_User &p)
 void NodeDB::updateFrom(const meshtastic_MeshPacket &mp)
 {
     if (mp.which_payload_variant == meshtastic_MeshPacket_decoded_tag && mp.from) {
-        LOG_DEBUG("Update DB node 0x%x, rx_time=%u\n", mp.from, mp.rx_time);
+        LOG_DEBUG("Update DB node 0x%x, rx_time=%u, channel=%d\n", mp.from, mp.rx_time, mp.channel);
 
         meshtastic_NodeInfo *info = getOrCreateNode(getFrom(&mp));
         if (!info) {
@@ -743,6 +736,10 @@ void NodeDB::updateFrom(const meshtastic_MeshPacket &mp)
 
         if (mp.rx_snr)
             info->snr = mp.rx_snr; // keep the most recent SNR we received for this node.
+
+        if (mp.decoded.portnum == meshtastic_PortNum_NODEINFO_APP) {
+            info->channel = mp.channel;
+        }
     }
 }
 
@@ -753,6 +750,15 @@ void NodeDB::updateNeighbors(const meshtastic_MeshPacket &mp, meshtastic_Neighbo
     if (mp.which_payload_variant == meshtastic_MeshPacket_decoded_tag && mp.from) {
         getOrCreateNeighbor(np->last_sent_by_id, mp.rx_time, mp.rx_snr);
     }
+}
+
+uint8_t NodeDB::getNodeChannel(NodeNum n)
+{
+    meshtastic_NodeInfo *info = getNode(n);
+    if (!info) {
+        return 0; // defaults to PRIMARY
+    }
+    return info->channel;
 }
 
 /// Find a node in our DB, return null for missing
