@@ -45,6 +45,8 @@ class NodeDB
     // Note: these two references just point into our static array we serialize to/from disk
     meshtastic_NodeInfo *nodes;
     pb_size_t *numNodes;
+    meshtastic_Neighbor *neighbors;
+    pb_size_t *numNeighbors;
 
     uint32_t readPointer = 0;
 
@@ -76,6 +78,9 @@ class NodeDB
     /// we updateGUI and updateGUIforNode if we think our this change is big enough for a redraw
     void updateFrom(const meshtastic_MeshPacket &p);
 
+    // update neighbors with subpacket sniffed from network
+    void updateNeighbors(const meshtastic_MeshPacket &mp, meshtastic_NeighborInfo *np);
+
     /** Update position info for this node based on received position data
      */
     void updatePosition(uint32_t nodeId, const meshtastic_Position &p, RxSource src = RX_SRC_RADIO);
@@ -92,6 +97,8 @@ class NodeDB
     NodeNum getNodeNum() { return myNodeInfo.my_node_num; }
 
     size_t getNumNodes() { return *numNodes; }
+
+    size_t getNumNeighbors() { return *numNeighbors; }
 
     /// if returns false, that means our node should send a DenyNodeNum response.  If true, we think the number is okay for use
     // bool handleWantNodeNum(NodeNum n);
@@ -125,6 +132,11 @@ class NodeDB
         return &nodes[x];
     }
 
+    meshtastic_Neighbor *getNeighborByIndex(size_t x)
+    {
+        assert(x < *numNeighbors);
+        return &neighbors[x];
+    }
     /// Return the number of nodes we've heard from recently (within the last 2 hrs?)
     size_t getNumOnlineNodes();
 
@@ -140,6 +152,9 @@ class NodeDB
   private:
     /// Find a node in our DB, create an empty NodeInfo if missing
     meshtastic_NodeInfo *getOrCreateNode(NodeNum n);
+
+    /// Ditto with a neighbor
+    meshtastic_Neighbor *getOrCreateNeighbor(NodeNum n, int timestamp, int snr);
 
     /// Notify observers of changes to the DB
     void notifyObservers(bool forceUpdate = false)

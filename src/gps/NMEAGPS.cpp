@@ -1,6 +1,7 @@
 #include "NMEAGPS.h"
 #include "RTC.h"
 #include "configuration.h"
+#include <ctime>
 
 #include <TinyGPS++.h>
 
